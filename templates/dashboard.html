@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Dashboard – FlashHotelReviewer</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <p style="text-align: right">
+      Connecté en tant que {{ session.user_email }} |
+      <a href="/logout">🔓 Se déconnecter</a>
+    </p>
+
+    <div class="container">
+      <h1>📍 Établissements</h1>
+      <ul>
+        {% for loc in locations %}
+        <li><strong>{{ loc.title }}</strong><br />{{ loc.locationName }}</li>
+        {% endfor %}
+      </ul>
+
+      <h2>📝 Derniers avis</h2>
+      {% for review in reviews %}
+      <div
+        class="review"
+        style="
+          background: #fff;
+          padding: 15px;
+          margin-bottom: 15px;
+          border-radius: 10px;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        "
+      >
+        <div style="display: flex; align-items: center">
+          <img
+            src="{{ review.reviewer.profilePhotoUrl }}"
+            alt="avatar"
+            style="
+              border-radius: 50%;
+              width: 40px;
+              height: 40px;
+              margin-right: 10px;
+            "
+          />
+          <strong>{{ review.reviewer.displayName }}</strong>
+        </div>
+        <p style="margin: 5px 0"><strong>⭐ {{ review.starRating }}</strong></p>
+        <p>{{ review.comment }}</p>
+        <small style="color: gray">Posté le {{ review.createTime[:10] }}</small>
+      </div>
+      <form
+        method="POST"
+        action="/generate_response"
+        onsubmit="return genererReponse(this, event);"
+      >
+        <input type="hidden" name="avis" value="{{ review.comment }}" />
+        <button type="submit">🧠 Générer une réponse</button>
+      </form>
+
+      <div class="reponse-bloc" style="display: none; margin-top: 10px">
+        <label><strong>Réponse générée :</strong></label
+        ><br />
+        <textarea
+          class="zone-reponse"
+          rows="4"
+          style="width: 100%; margin-top: 5px"
+        ></textarea
+        ><br />
+        <button type="button" class="copier-btn">📋 Copier la réponse</button>
+      </div>
+
+      {% else %}
+      <p>Aucun avis pour cet établissement.</p>
+      {% endfor %}
+    </div>
+    <h2>⚙️ Configuration des réponses</h2>
+    <form action="/save_profile" method="post" style="margin-bottom: 30px">
+      <label>Nom de l’établissement :</label><br />
+      <input type="text" name="nom" required /><br /><br />
+
+      <label>Type d’établissement :</label><br />
+      <input
+        type="text"
+        name="type"
+        placeholder="Hôtel, restaurant…"
+        required
+      /><br /><br />
+
+      <label>Ville :</label><br />
+      <input type="text" name="ville" required /><br /><br />
+
+      <label>Ton souhaité :</label><br />
+      <select name="ton" required>
+        <option value="formel">Formel</option>
+        <option value="amical">Amical</option>
+        <option value="enthousiaste">Enthousiaste</option></select
+      ><br /><br />
+
+      <label>Signature personnalisée :</label><br />
+      <input
+        type="text"
+        name="signature"
+        placeholder="L’équipe de l’Hôtel du Test"
+      /><br /><br />
+
+      <button type="submit">✅ Enregistrer</button>
+    </form>
+    {% if session.profil_etablissement %}
+    <h3>🧾 Profil enregistré :</h3>
+    <ul>
+      <li><strong>Nom :</strong> {{ session.profil_etablissement.nom }}</li>
+      <li><strong>Type :</strong> {{ session.profil_etablissement.type }}</li>
+      <li><strong>Ville :</strong> {{ session.profil_etablissement.ville }}</li>
+      <li><strong>Ton :</strong> {{ session.profil_etablissement.ton }}</li>
+      <li>
+        <strong>Signature :</strong> {{ session.profil_etablissement.signature
+        }}
+      </li>
+    </ul>
+    {% endif %}
+
+    <script>
+      function genererReponse(form, event) {
+        event.preventDefault();
+
+        const bloc = form.nextElementSibling;
+        const textarea = bloc.querySelector(".zone-reponse");
+        const boutonCopie = bloc.querySelector(".copier-btn");
+
+        // Affiche le bloc
+        bloc.style.display = "block";
+        textarea.value = "⏳ Génération en cours...";
+        boutonCopie.disabled = true;
+
+        fetch("/generate_response", {
+          method: "POST",
+          body: new FormData(form),
+        })
+          .then((response) => response.text())
+          .then((data) => {
+            textarea.value = data;
+            boutonCopie.disabled = false;
+          })
+          .catch((err) => {
+            textarea.value = "❌ Erreur : " + err;
+            boutonCopie.disabled = true;
+          });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".copier-btn").forEach((button) => {
+          button.addEventListener("click", () => {
+            const textarea = button
+              .closest(".reponse-bloc")
+              .querySelector(".zone-reponse");
+            navigator.clipboard.writeText(textarea.value).then(() => {
+              button.innerText = "✅ Copié !";
+              setTimeout(() => {
+                button.innerText = "📋 Copier la réponse";
+              }, 1500);
+            });
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
