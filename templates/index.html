@@ -2,14 +2,394 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>FlashHotelReviewer</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reviewer - Répondez à vos avis</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+
+    <link rel="stylesheet" href="../static/styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body,
+      p,
+      a,
+      li,
+      span,
+      input,
+      button,
+      textarea,
+      select,
+      label {
+        font-family: "Open Sans", sans-serif;
+      }
+
+      html,
+      body {
+        overflow-x: hidden;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background-image: linear-gradient(
+          109.6deg,
+          rgba(0, 182, 255, 1) 11.2%,
+          rgba(102, 51, 153, 1) 91.1%
+        );
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-size: cover;
+      }
+      #hero {
+        min-height: 100vh;
+        background-image: radial-gradient(
+          circle farthest-corner at 6.3% 21.8%,
+          rgba(236, 6, 117, 1) 0%,
+          rgba(13, 32, 67, 1) 90%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 1rem;
+      }
+      .gradient-btn {
+        background: #12c2e9;
+        background: -webkit-linear-gradient(
+          to right,
+          #f64f59,
+          #c471ed,
+          #12c2e9
+        );
+        background: linear-gradient(to right, #f64f59, #c471ed, #12c2e9);
+      }
+      .fade-in-section {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+      }
+      .fade-in-section.visible {
+        opacity: 1;
+        transform: none;
+      }
+      .feature-box {
+        background: linear-gradient(
+          0deg,
+          rgba(34, 193, 195, 1) 0%,
+          rgba(253, 187, 45, 1) 100%
+        );
+      }
+    </style>
   </head>
-  <body>
-    <div class="container">
-      <h1>Répondez à vos avis Google en un clic ✨</h1>
-      <p>Connectez votre compte Google pour commencer</p>
-      <a href="/login" class="btn">Se connecter avec Google</a>
-    </div>
+  <body class="text-gray-800 font-[Inter]">
+    {% include 'header.html' %}
+
+    <!-- Hero -->
+    <!-- Hero -->
+    <section id="hero" class="text-center text-white">
+      <div class="max-w-3xl mx-auto px-4">
+        <h2
+          class="text-5xl md:text-6xl font-extrabold mb-6 animate__animated animate__fadeInDown font-[Poppins]"
+        >
+          Répondez à vos avis clients en un clic
+        </h2>
+        <p
+          class="text-xl md:text-2xl mb-10 animate__animated animate__backInRight animate__delay-1s font-[Open\ Sans]"
+        >
+          Automatisez vos réponses Google avec une IA intelligente et
+          personnalisable. Boostez votre image, votre relation client et vos
+          résultats.
+        </p>
+        <a
+          href="{% if session.user_email %}/dashboard{% else %}/login{% endif %}"
+          class="gradient-btn text-white px-8 py-4 rounded-2xl text-lg font-semibold hover:opacity-90 inline-block animate__animated animate__backInLeft animate__delay-2s"
+        >
+          {% if session.user_email %}Accéder au dashboard{% else %}Se connecter
+          avec Google{% endif %}
+        </a>
+      </div>
+    </section>
+
+    <!-- Fonctionnalités -->
+    <section id="features" class="py-20 fade-in-section">
+      <div class="max-w-6xl mx-auto px-6 text-center">
+        <h3 class="text-3xl font-bold mb-12 font-[Poppins]">
+          Ce que vous pouvez faire avec Reviewer
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="feature-box rounded-lg p-6 shadow-sm">
+            <h4 class="text-xl font-semibold text-white mb-2 font-[Poppins]">
+              Réponses automatiques
+            </h4>
+            <p class="text-white font-[Open\ Sans]">
+              Générez des réponses instantanées et professionnelles à vos avis
+              clients.
+            </p>
+          </div>
+          <div class="feature-box rounded-lg p-6 shadow-sm">
+            <h4 class="text-xl font-semibold text-white mb-2 font-[Poppins]">
+              Tonalité personnalisable
+            </h4>
+            <p class="text-white font-[Open\ Sans]">
+              Choisissez le ton adapté : amical, pro, signé ou succinct.
+            </p>
+          </div>
+          <div class="feature-box rounded-lg p-6 shadow-sm">
+            <h4 class="text-xl font-semibold text-white mb-2 font-[Poppins]">
+              Tableau de bord clair
+            </h4>
+            <p class="text-white font-[Open\ Sans]">
+              Visualisez, filtrez et gérez vos réponses efficacement.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section stats -->
+    <section class="py-20 fade-in-section">
+      <div class="max-w-6xl mx-auto px-6 text-center">
+        <h3 class="text-3xl font-bold mb-10 text-white font-[Poppins]">
+          L’impact de vos réponses
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <p class="text-5xl font-bold text-white font-[Poppins]">+25%</p>
+            <p class="text-gray-100 font-[Open\ Sans]">
+              de chiffre d'affaires constaté
+            </p>
+          </div>
+          <div>
+            <p class="text-5xl font-bold text-white font-[Poppins]">3x</p>
+            <p class="text-gray-100 font-[Open\ Sans]">
+              plus de confiance exprimée
+            </p>
+          </div>
+          <div>
+            <p class="text-5xl font-bold text-white font-[Poppins]">-50%</p>
+            <p class="text-gray-100 font-[Open\ Sans]">
+              de critiques négatives ignorées
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- À propos -->
+    <section id="about" class="py-20 fade-in-section">
+      <div class="max-w-6xl mx-auto px-6">
+        <h3
+          class="text-3xl font-bold text-white mb-10 text-left font-[Poppins]"
+        >
+          À propos de Reviewer
+        </h3>
+        <div
+          class="rounded-2xl p-8 text-white text-lg leading-relaxed text-justify font-[Open\ Sans]"
+          style="
+            background: radial-gradient(
+              circle,
+              rgba(63, 94, 251, 1) 0%,
+              rgba(252, 70, 107, 1) 100%
+            );
+          "
+        >
+          Nous sommes une jeune startup convaincue que chaque avis mérite une
+          réponse. Lors de notre étude de marché, nous avons découvert que plus
+          de 65% des avis Google restaient sans réponse.<br /><br />
+          <strong>Reviewer</strong> est né pour combler ce vide, en fournissant
+          une solution simple, rapide et efficace. Notre mission : restaurer la
+          confiance et améliorer la réputation digitale des entreprises locales.
+        </div>
+      </div>
+    </section>
+
+    <!-- NOUVELLES SECTIONS EN STYLE LOCALCLARITY - FULL DESIGN MATCH -->
+    <!-- Mise en page inspirée de https://www.localclarity.com/ avec animations -->
+
+    <!-- Section 1 : Introduction Fonctionnelle -->
+    <!-- Section 1 : Introduction Fonctionnelle -->
+    <section class="py-24 px-6 bg-white text-gray-900 fade-in-section">
+      <div class="max-w-6xl mx-auto grid md:grid-cols-12 gap-16 items-center">
+        <div
+          class="md:col-span-7 animate__animated animate__fadeInLeft animate__delay-1s"
+        >
+          <h2 class="text-4xl font-bold mb-6 leading-tight font-[Poppins]">
+            Une suite d’outils complète pour des réponses engageantes
+          </h2>
+          <p class="text-lg leading-relaxed text-gray-700 font-[Open\ Sans]">
+            Reviewer centralise l’automatisation, l’analyse et la
+            personnalisation de vos réponses aux avis clients pour renforcer
+            votre image locale et gagner du temps au quotidien.
+          </p>
+        </div>
+        <div
+          class="md:col-span-5 animate__animated animate__fadeInRight animate__delay-2s"
+        >
+          <div
+            class="rounded-2xl p-8 shadow-xl text-white"
+            style="background: linear-gradient(to right, #96deda, #50c9c3)"
+          >
+            <h4 class="text-2xl font-semibold mb-3 font-[Poppins]">
+              🔧 Suite intégrée
+            </h4>
+            <p class="font-[Open\ Sans]">
+              Une seule plateforme pour tout gérer : avis, IA, dashboards,
+              tonalité et analyse multilingue.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2 : IA de gestion des avis -->
+    <section class="py-24 px-6 bg-[#f7f8f9] text-gray-900 fade-in-section">
+      <div class="max-w-6xl mx-auto grid md:grid-cols-12 gap-16 items-center">
+        <div
+          class="md:col-span-5 animate__animated animate__fadeInLeft animate__delay-1s"
+        >
+          <div
+            class="rounded-2xl p-8 shadow-xl text-white"
+            style="background: linear-gradient(to right, #faaca8, #ddd6f3)"
+          >
+            <h4 class="text-2xl font-semibold mb-3 font-[Poppins]">
+              💬 IA multilingue
+            </h4>
+            <p class="font-[Open\ Sans]">
+              Répondez automatiquement à tous vos avis, en plusieurs langues,
+              avec un ton et une signature personnalisés.
+            </p>
+          </div>
+        </div>
+        <div
+          class="md:col-span-7 animate__animated animate__fadeInRight animate__delay-2s"
+        >
+          <h2 class="text-4xl font-bold mb-6 leading-tight font-[Poppins]">
+            La puissance de l’IA au service de votre relation client
+          </h2>
+          <p class="text-lg leading-relaxed text-gray-700 font-[Open\ Sans]">
+            Générez des réponses uniques à chaque avis, en prenant en compte la
+            note, le contenu, la langue et les émotions détectées. Laissez votre
+            IA travailler pour vous, avec votre style.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3 : Analyse et statistiques -->
+    <section class="py-24 px-6 bg-white text-gray-900 fade-in-section">
+      <div class="max-w-6xl mx-auto grid md:grid-cols-12 gap-16 items-center">
+        <div
+          class="md:col-span-7 animate__animated animate__fadeInLeft animate__delay-1s"
+        >
+          <h2 class="text-4xl font-bold mb-6 leading-tight font-[Poppins]">
+            Comprenez l’impact de chaque action
+          </h2>
+          <p class="text-lg leading-relaxed text-gray-700 font-[Open\ Sans]">
+            Visualisez vos taux de réponses, les types d’avis, les lieux qui
+            performent le mieux et identifiez des pistes concrètes
+            d’amélioration pour chaque établissement.
+          </p>
+        </div>
+        <div
+          class="md:col-span-5 animate__animated animate__fadeInRight animate__delay-2s"
+        >
+          <div
+            class="rounded-2xl p-8 shadow-xl text-white"
+            style="background: linear-gradient(to right, #274046, #e6dada)"
+          >
+            <h4 class="text-2xl font-semibold mb-3 font-[Poppins]">
+              📊 Statistiques visuelles
+            </h4>
+            <p class="font-[Open\ Sans]">
+              Transformez vos données en décisions concrètes grâce à nos
+              rapports automatiques et détaillés.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4 : Automatisation -->
+    <section class="py-24 px-6 bg-[#f7f8f9] text-gray-900 fade-in-section">
+      <div class="max-w-6xl mx-auto grid md:grid-cols-12 gap-16 items-center">
+        <div
+          class="md:col-span-5 animate__animated animate__fadeInLeft animate__delay-1s"
+        >
+          <div
+            class="rounded-2xl p-8 shadow-xl text-white"
+            style="background: linear-gradient(to right, #f2709c, #ff9472)"
+          >
+            <h4 class="text-2xl font-semibold mb-3 font-[Poppins]">
+              ⚙️ Moteur d’automatisation
+            </h4>
+            <p class="font-[Open\ Sans]">
+              Créez vos propres workflows pour déclencher des réponses, alertes
+              ou exports de données.
+            </p>
+          </div>
+        </div>
+        <div
+          class="md:col-span-7 animate__animated animate__fadeInRight animate__delay-2s"
+        >
+          <h2 class="text-4xl font-bold mb-6 leading-tight font-[Poppins]">
+            Des scénarios automatisés puissants et simples
+          </h2>
+          <p class="text-lg leading-relaxed text-gray-700 font-[Open\ Sans]">
+            Grâce à notre centre d’automatisation, vous pouvez paramétrer des
+            enchaînements d’actions sur-mesure selon vos règles métiers.
+            Notifications, réponses, exports, tout peut être déclenché
+            automatiquement.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8">
+      <div
+        class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center"
+      >
+        <p class="text-sm">&copy; 2025 Reviewer. Tous droits réservés.</p>
+        <a href="contact.html" class="mt-4 md:mt-0 text-sm underline"
+          >Page de contact</a
+        >
+      </div>
+    </footer>
+
+    <!-- JS Scroll Reveal -->
+    <script>
+      const faders = document.querySelectorAll(".fade-in-section");
+
+      const appearOptions = {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      };
+
+      const appearOnScroll = new IntersectionObserver(function (
+        entries,
+        observer
+      ) {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      appearOptions);
+
+      faders.forEach((fader) => {
+        appearOnScroll.observe(fader);
+      });
+    </script>
   </body>
 </html>

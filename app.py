@@ -56,6 +56,8 @@ def index():
 
 @app.route("/callback")
 def callback():
+    print("➡️ URL callback appelée :", request.url)  # ajoute cette ligne
+
     flow = Flow.from_client_config(
         {
             "web": {
@@ -115,8 +117,9 @@ def login():
     print("👉 redirect_uri utilisé :", flow.redirect_uri)
     return redirect(auth_url)
 
-
-    
+"""
+# Fonction pour récupérer les avis depuis l'API Google My Business
+ 
 def get_reviews_data(token, refresh_token, token_uri, client_id, client_secret):
     # Authentification
     credentials = Credentials(
@@ -164,7 +167,81 @@ def get_reviews_data(token, refresh_token, token_uri, client_id, client_secret):
 
     return [first_location], avis_formatés
 
+"""
 
+def get_reviews_data(token, refresh_token, token_uri, client_id, client_secret):
+    try:
+        # Authentification
+        credentials = Credentials(
+            token=token,
+            refresh_token=refresh_token,
+            token_uri=token_uri,
+            client_id=client_id,
+            client_secret=client_secret
+        )
+
+        # Étape 1 : récupérer le compte
+        account_service = build("mybusinessaccountmanagement", "v1", credentials=credentials)
+        accounts = account_service.accounts().list().execute()
+        if "accounts" not in accounts or not accounts["accounts"]:
+            raise Exception("Aucun compte trouvé.")
+
+        account_name = accounts["accounts"][0]["name"]  # "accounts/123..."
+
+        # Étape 2 : récupérer les établissements
+        info_service = build("mybusinessbusinessinformation", "v1", credentials=credentials)
+        locations_response = info_service.accounts().locations().list(parent=account_name).execute()
+        locations = locations_response.get("locations", [])
+        if not locations:
+            raise Exception("Aucun établissement trouvé.")
+
+        first_location = locations[0]
+        location_name = first_location["name"]
+
+        # Étape 3 : récupérer les avis
+        reviews_service = build("mybusiness", "v4", credentials=credentials)
+        reviews_response = reviews_service.accounts().locations().reviews().list(parent=location_name).execute()
+        reviews = reviews_response.get("reviews", [])
+
+        # Formatage
+        avis_formatés = []
+        for r in reviews:
+            avis_formatés.append({
+                "reviewer": {
+                    "displayName": r.get("reviewer", {}).get("displayName", "Client"),
+                    "profilePhotoUrl": r.get("reviewer", {}).get("profilePhotoUrl", "https://i.pravatar.cc/50")
+                },
+                "starRating": r.get("starRating", "UNSPECIFIED"),
+                "comment": r.get("comment", ""),
+                "createTime": r.get("createTime", "")
+            })
+
+        return [first_location], avis_formatés
+
+    except Exception as e:
+        print("⚠️ Erreur API Google : fallback en mode démo :", e)
+
+        # MODE DÉMO — Fallback avec avis simulés
+        locations = [{
+            'title': 'Établissement Démo',
+            'locationName': '123 Rue de l’Exemple, Paris',
+            'name': 'accounts/000000000/locations/000000000'
+        }]
+        reviews = [
+            {
+                'reviewer': {'displayName': 'Alice', 'profilePhotoUrl': 'https://i.pravatar.cc/50?img=1'},
+                'starRating': 'FIVE',
+                'comment': 'Super service ! Merci beaucoup.',
+                'createTime': '2025-06-30T14:00:00Z'
+            },
+            {
+                'reviewer': {'displayName': 'Bob', 'profilePhotoUrl': 'https://i.pravatar.cc/50?img=2'},
+                'starRating': 'THREE',
+                'comment': 'Correct mais un peu long.',
+                'createTime': '2025-06-29T12:00:00Z'
+            }
+        ]
+        return locations, reviews
 
 
 
@@ -221,8 +298,8 @@ Voici un avis client :
 
 Génère une réponse {profil['ton']}, professionnelle, polie et efficace, en 3 à 5 phrases.
 Termine par cette signature : "{profil['signature']}".
-Merci de rester concis.
-"""
+Merci de rester concis."""
+
 
     try:
         # 🔥 modèle validé et dispo pour la génération de texte
@@ -231,13 +308,13 @@ Merci de rester concis.
         response = model.generate_content([prompt])
         return response.text.strip()
     except Exception as e:
-        return f"[Erreur Gemini] {e}"
+        return f"[Erreur Gemini] {e}"   
 
 
 @app.route("/generate_response", methods=["POST"])
 def generate_response():
     avis = request.form.get("avis")  # récupère l'avis du formulaire
-    profil = session.get("profil_etablissement", {})  # récupère le profil depuis la session
+    profil = session.get("profil_etablissement", )  # récupère le profil depuis la session
 
     if not avis or not profil:
         return "Erreur : informations manquantes", 400
@@ -251,6 +328,7 @@ def generate_response():
 def logout():
     session.clear()
     return redirect(url_for("index"))
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
