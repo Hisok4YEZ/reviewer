@@ -39,7 +39,7 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # pour le local
 # === Configuration ===
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-REDIRECT_URI = "http://127.0.0.1:5000/callback"
+REDIRECT_URI = os.environ.get("REDIRECT_URI")
 
 SCOPES = [
     "https://www.googleapis.com/auth/business.manage",
