@@ -7,3 +7,4 @@ google-auth-oauthlib
 google-api-python-client
 flask-cors
 google-generativeai
+python-dotenv
