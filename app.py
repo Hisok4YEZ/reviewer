@@ -290,6 +290,18 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
+@app.route("/ajouter_credits/<email>/<int:nb_credits>")
+def ajouter_credits(email, nb_credits):
+    if email != "yunes.errachidzine@gmail.com":
+        return "Non autorisé", 403
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return "Utilisateur non trouvé", 404
+
+    user.credits += nb_credits
+    db.session.commit()
+    return f"{nb_credits} crédits ajoutés à {email} ✔️"
 
 
 # === Démarrage ===
@@ -302,3 +314,4 @@ with app.app_context():
         print("✅ Tables SQLite créées sur Render")
     except Exception as e:
         print(f"❌ Erreur création tables : {e}")
+
