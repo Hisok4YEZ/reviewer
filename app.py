@@ -295,5 +295,10 @@ def logout():
 # === Démarrage ===
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+            print("✅ Tables créées ou déjà existantes")
+        except Exception as e:
+            print("❌ Erreur création de la base :", e)
+
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
