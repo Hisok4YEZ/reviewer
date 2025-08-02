@@ -6,7 +6,7 @@ from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from flask_sqlalchemy import SQLAlchemy
-from models import db, User, Review
+from models import db, User, Review, DemoReview, RedemptionCode
 import json
 import google.generativeai as genai
 
@@ -260,8 +260,11 @@ def generate_response():
         return "Erreur : informations manquantes, veuillez remplir le formulaire en bas de la page", 400
 
     user = User.query.filter_by(email=session["user_email"]).first()
+    
     if user.credits <= 0:
         return "Crédits épuisés", 402
+    user.credits -= 1
+
 
     reponse = generer_reponse_avis(profil, avis)
     user.credits -= 1
@@ -290,18 +293,55 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
-@app.route("/ajouter_credits/<email>/<int:nb_credits>")
-def ajouter_credits(email, nb_credits):
-    if email != "yunes.errachidzine@gmail.com":
-        return "Non autorisé", 403
 
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return "Utilisateur non trouvé", 404
+@app.route("/redeem", methods=["GET", "POST"])
+def redeem():
+    if request.method == "POST":
+        code_input = request.form.get("code").strip()
+        if not code_input or "user_email" not in session:
+            return "Erreur : code invalide ou utilisateur non connecté."
 
-    user.credits += nb_credits
+        user_email = session["user_email"]
+        user = User.query.filter_by(email=user_email).first()
+        code = RedemptionCode.query.filter_by(code=code_input).first()
+
+        if not code:
+            return "❌ Code introuvable."
+        if code.is_used:
+            return f"❌ Ce code a déjà été utilisé par {code.used_by}."
+        
+        # Appliquer les crédits illimités
+        user.code_reduction = "APP_SUMO_UNLIMITED"
+        user.credits = 999999
+
+        # Marquer le code comme utilisé
+        code.is_used = True
+        code.used_by = user_email
+
+        db.session.commit()
+        return redirect(url_for("dashboard"))
+
+    return render_template("redeem.html")
+
+@app.route("/admin/generate-codes")
+def generate_codes_route():
+    from models import RedemptionCode
+    import random, string
+
+    def generate_code(length=12):
+        return "APP-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+    existing = {c.code for c in RedemptionCode.query.all()}
+    codes = []
+    while len(codes) < 1000:
+        code = generate_code()
+        if code not in existing:
+            codes.append(RedemptionCode(code=code))
+            existing.add(code)
+
+    db.session.bulk_save_objects(codes)
     db.session.commit()
-    return f"{nb_credits} crédits ajoutés à {email} ✔️"
+    return f"{len(codes)} codes générés ! ✅"
 
 
 # === Démarrage ===

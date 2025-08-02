@@ -29,3 +29,11 @@ class DemoReview(db.Model):
     date = db.Column(db.String)
     reponse = db.Column(db.Text)
     user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
+
+
+class RedemptionCode(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(100), unique=True, nullable=False)
+    is_used = db.Column(db.Boolean, default=False)
+    used_by = db.Column(db.String(200))  # email de l'utilisateur
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
