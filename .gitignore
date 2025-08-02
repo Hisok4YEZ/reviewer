@@ -1,1 +1,9 @@
+
+# Fichiers/dossiers à ignorer
+__pycache__/
+.DS_Store
+*.pyc
+*.db
 .env
+instance/
+flashreviewer.db
