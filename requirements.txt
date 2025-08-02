@@ -8,3 +8,5 @@ google-api-python-client
 flask-cors
 google-generativeai
 python-dotenv
+flask_sqlalchemy
+psycopg2-binary

@@ -3,15 +3,14 @@ from dotenv import load_dotenv
 import os
 import requests
 from google_auth_oauthlib.flow import Flow
-import pathlib
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import Flow
-
-
-
+from flask_sqlalchemy import SQLAlchemy
+from models import db, User, Review
 import json
+import google.generativeai as genai
 
+# === Fonctions utilitaires JSON pour profil établissement ===
 def sauvegarder_profil_utilisateur(email, profil):
     with open("profils.json", "r+") as f:
         data = json.load(f)
@@ -27,20 +26,19 @@ def charger_profil_utilisateur(email):
         data = json.load(f)
         return data.get(email)
 
-
-
-
+# === Config Flask & DB ===
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = "yunes_secret_key"  # change en prod
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///flashreviewer.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db.init_app(app)
+app.secret_key = "yunes_secret_key"
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # pour le local
-
-# === Configuration ===
+# === Google OAuth Config ===
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("REDIRECT_URI")
-
 SCOPES = [
     "https://www.googleapis.com/auth/business.manage",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -48,15 +46,15 @@ SCOPES = [
     "openid"
 ]
 
-# === Routes ===
-
+# === Page d'accueil ===
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# === Callback OAuth ===
 @app.route("/callback")
 def callback():
-    print("➡️ URL callback appelée :", request.url)  # ajoute cette ligne
+    print("➡️ URL callback appelée :", request.url)
 
     flow = Flow.from_client_config(
         {
@@ -72,8 +70,19 @@ def callback():
     )
 
     flow.fetch_token(authorization_response=request.url)
-
     credentials = flow.credentials
+
+    # ✅ Vérifie et décode l'id_token
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+
+    idinfo = id_token.verify_oauth2_token(
+        credentials.id_token,
+        google_requests.Request(),
+        GOOGLE_CLIENT_ID
+    )
+    google_id = idinfo["sub"]
+    email = idinfo["email"]
 
     # 💾 Enregistrement des tokens dans la session
     session["token"] = credentials.token
@@ -81,177 +90,109 @@ def callback():
     session["token_uri"] = credentials.token_uri
     session["client_id"] = credentials.client_id
     session["client_secret"] = credentials.client_secret
+    session["user_email"] = email
 
-    # 🔐 Récupération de l’email utilisateur
-    user_info = requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {credentials.token}"}
-    ).json()
-    session["user_email"] = user_info["email"]
+    # 📦 Création utilisateur si nouveau
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(email=email, google_id=google_id)
+        db.session.add(user)
+        db.session.commit()
 
-    # 📁 Chargement du profil existant s’il y en a un
-    profil = charger_profil_utilisateur(user_info["email"])
+    # 📁 Chargement du profil s’il existe
+    profil = charger_profil_utilisateur(email)
     if profil:
         session["profil_etablissement"] = profil
 
-    # ✅ Redirection vers /dashboard une fois les infos bien stockées
     return redirect(url_for("dashboard"))
 
 
+# === Login OAuth ===
 @app.route("/login")
 def login():
-    flow = Flow.from_client_config(
-        {
-            "web": {
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=SCOPES,
-        redirect_uri=REDIRECT_URI
-    )
+    flow = Flow.from_client_config({
+        "web": {
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+    }, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+
     auth_url, state = flow.authorization_url(prompt='consent', access_type='offline')
     session["flow_state"] = state
     print("👉 redirect_uri utilisé :", flow.redirect_uri)
     return redirect(auth_url)
 
-"""
-# Fonction pour récupérer les avis depuis l'API Google My Business
- 
-def get_reviews_data(token, refresh_token, token_uri, client_id, client_secret):
-    # Authentification
-    credentials = Credentials(
-        token=token,
-        refresh_token=refresh_token,
-        token_uri=token_uri,
-        client_id=client_id,
-        client_secret=client_secret
+from models import db, User, Review, DemoReview
+from datetime import datetime, timezone
+
+@app.route("/add_demo_review", methods=["POST"])
+def add_demo_review():
+    if "user_email" not in session:
+        return redirect(url_for("login"))
+
+    auteur = request.form.get("auteur")
+    note = request.form.get("note")
+    texte = request.form.get("texte")
+
+    user = User.query.filter_by(email=session["user_email"]).first()
+    review = DemoReview(
+        auteur=auteur,
+        note=note,
+        texte=texte,
+        date=datetime.now(timezone.utc).isoformat(),
+        user_id=user.id
     )
+    db.session.add(review)
+    db.session.commit()
+    return redirect(url_for("dashboard"))
 
-    # 🔐 Étape 1 : récupérer le compte via l’API Account Management
-    account_service = build("mybusinessaccountmanagement", "v1", credentials=credentials)
-    accounts = account_service.accounts().list().execute()
-    if "accounts" not in accounts or len(accounts["accounts"]) == 0:
-        return [], []
-    account_name = accounts["accounts"][0]["name"]  # ex: "accounts/123456789"
+# === Fallback / Données démo ===
+def get_reviews_data(token, refresh_token, token_uri, client_id, client_secret):
+    print("ℹ️ Mode démo forcé activé (aucun appel à l’API Google Business).")
 
-    # 🏢 Étape 2 : récupérer les établissements via l’API Business Info
-    info_service = build("mybusinessbusinessinformation", "v1", credentials=credentials)
-    locations_response = info_service.accounts().locations().list(parent=account_name).execute()
-    locations = locations_response.get("locations", [])
-    if not locations:
-        return [], []
+    # Données d’établissement fictives
+    locations = [{
+        'title': 'Établissement Démo',
+        'locationName': '123 Rue de l’Exemple, Paris',
+        'name': 'accounts/000000000/locations/000000000'
+    }]
 
-    first_location = locations[0]
-    location_name = first_location["name"]  # ex: "accounts/123456789/locations/987654321"
+    # Avis fictifs pré-remplis
+    reviews = [
+        {"id": "demo_alice", "reviewer": {"displayName": "Alice", "profilePhotoUrl": "https://i.pravatar.cc/50?img=1"}, "starRating": "FIVE", "comment": "Great service ! thanks.", "createTime": "2025-06-30T14:00:00Z", "response": None},
+        {"id": "demo_bob", "reviewer": {"displayName": "Bob", "profilePhotoUrl": "https://i.pravatar.cc/50?img=2"}, "starRating": "THREE", "comment": "Correct mais un peu long.", "createTime": "2025-06-29T12:00:00Z", "response": None},
+        {"id": "demo_claire", "reviewer": {"displayName": "Claire", "profilePhotoUrl": "https://i.pravatar.cc/50?img=3"}, "starRating": "ONE", "comment": "Très mauvaise expérience.", "createTime": "2025-06-28T10:45:00Z", "response": None},
+        {"id": "demo_david", "reviewer": {"displayName": "David", "profilePhotoUrl": "https://i.pravatar.cc/50?img=4"}, "starRating": "FOUR", "comment": "Personnel agréable. Bruyant.", "createTime": "2025-06-27T18:30:00Z", "response": None}
+    ]
 
-    # ✨ Étape 3 : récupérer les avis via l’API My Business (v4)
-    reviews_service = build("mybusiness", "v4", credentials=credentials)
-    reviews_response = reviews_service.accounts().locations().reviews().list(parent=location_name).execute()
-    reviews = reviews_response.get("reviews", [])
+    # 🔁 Ajouter les avis personnalisés persistés en BDD
+    user = User.query.filter_by(email=session["user_email"]).first()
+    custom_reviews = DemoReview.query.filter_by(user_id=user.id).all()
 
-    # 🧽 Formatage pour dashboard.html
-    avis_formatés = []
-    for r in reviews:
-        avis_formatés.append({
+    for r in custom_reviews:
+        reviews.append({
+            "id": f"demo_{r.id}",
             "reviewer": {
-                "displayName": r.get("reviewer", {}).get("displayName", "Client"),
-                "profilePhotoUrl": r.get("reviewer", {}).get("profilePhotoUrl", "https://i.pravatar.cc/50")
+                "displayName": r.auteur,
+                "profilePhotoUrl": "https://i.pravatar.cc/50?" + r.auteur.replace(" ", "_")
             },
-            "starRating": r.get("starRating", "UNSPECIFIED"),
-            "comment": r.get("comment", ""),
-            "createTime": r.get("createTime", "")
+            "starRating": r.note,
+            "comment": r.texte,
+            "createTime": r.date,
+            "response": r.reponse
         })
 
-    return [first_location], avis_formatés
-
-"""
-
-def get_reviews_data(token, refresh_token, token_uri, client_id, client_secret):
-    try:
-        # Authentification
-        credentials = Credentials(
-            token=token,
-            refresh_token=refresh_token,
-            token_uri=token_uri,
-            client_id=client_id,
-            client_secret=client_secret
-        )
-
-        # Étape 1 : récupérer le compte
-        account_service = build("mybusinessaccountmanagement", "v1", credentials=credentials)
-        accounts = account_service.accounts().list().execute()
-        if "accounts" not in accounts or not accounts["accounts"]:
-            raise Exception("Aucun compte trouvé.")
-
-        account_name = accounts["accounts"][0]["name"]  # "accounts/123..."
-
-        # Étape 2 : récupérer les établissements
-        info_service = build("mybusinessbusinessinformation", "v1", credentials=credentials)
-        locations_response = info_service.accounts().locations().list(parent=account_name).execute()
-        locations = locations_response.get("locations", [])
-        if not locations:
-            raise Exception("Aucun établissement trouvé.")
-
-        first_location = locations[0]
-        location_name = first_location["name"]
-
-        # Étape 3 : récupérer les avis
-        reviews_service = build("mybusiness", "v4", credentials=credentials)
-        reviews_response = reviews_service.accounts().locations().reviews().list(parent=location_name).execute()
-        reviews = reviews_response.get("reviews", [])
-
-        # Formatage
-        avis_formatés = []
-        for r in reviews:
-            avis_formatés.append({
-                "reviewer": {
-                    "displayName": r.get("reviewer", {}).get("displayName", "Client"),
-                    "profilePhotoUrl": r.get("reviewer", {}).get("profilePhotoUrl", "https://i.pravatar.cc/50")
-                },
-                "starRating": r.get("starRating", "UNSPECIFIED"),
-                "comment": r.get("comment", ""),
-                "createTime": r.get("createTime", "")
-            })
-
-        return [first_location], avis_formatés
-
-    except Exception as e:
-        print("⚠️ Erreur API Google : fallback en mode démo :", e)
-
-        # MODE DÉMO — Fallback avec avis simulés
-        locations = [{
-            'title': 'Établissement Démo',
-            'locationName': '123 Rue de l’Exemple, Paris',
-            'name': 'accounts/000000000/locations/000000000'
-        }]
-        reviews = [
-            {
-                'reviewer': {'displayName': 'Alice', 'profilePhotoUrl': 'https://i.pravatar.cc/50?img=1'},
-                'starRating': 'FIVE',
-                'comment': 'Super service ! Merci beaucoup.',
-                'createTime': '2025-06-30T14:00:00Z'
-            },
-            {
-                'reviewer': {'displayName': 'Bob', 'profilePhotoUrl': 'https://i.pravatar.cc/50?img=2'},
-                'starRating': 'THREE',
-                'comment': 'Correct mais un peu long.',
-                'createTime': '2025-06-29T12:00:00Z'
-            }
-        ]
-        return locations, reviews
+    return locations, reviews
 
 
-
-@app.route("/dashboard")
+# === Dashboard ===
 @app.route("/dashboard")
 def dashboard():
     if "token" not in session:
         return redirect(url_for("index"))
 
-    # ✅ Appel correct avec les 5 arguments stockés en session
     locations, reviews = get_reviews_data(
         token=session["token"],
         refresh_token=session["refresh_token"],
@@ -259,11 +200,10 @@ def dashboard():
         client_id=session["client_id"],
         client_secret=session["client_secret"]
     )
+    user = User.query.filter_by(email=session["user_email"]).first()
+    return render_template("dashboard.html", locations=locations, reviews=reviews, credits=user.credits)
 
-    return render_template("dashboard.html", locations=locations, reviews=reviews)
-
-
-
+# === Sauvegarde du profil ===
 @app.route("/save_profile", methods=["POST"])
 def save_profile():
     profil = {
@@ -274,64 +214,86 @@ def save_profile():
         "signature": request.form["signature"]
     }
     session["profil_etablissement"] = profil
-
-    email = session.get("user_email")
-    if email:
-        sauvegarder_profil_utilisateur(email, profil)
-
+    if session.get("user_email"):
+        sauvegarder_profil_utilisateur(session["user_email"], profil)
     return redirect(url_for("dashboard"))
 
-
-
-
-
-import google.generativeai as genai
-
+# === IA - génération de réponse ===
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
 
 def generer_reponse_avis(profil, avis):
     prompt = f"""
-Tu es le gérant de {profil['nom']}, un {profil['type']} situé à {profil['ville']}.
-Voici un avis client :
+Tu es le gérant de l’établissement suivant : {profil['nom']}, un {profil['type']} situé à {profil['ville']}.
+---
+📝 Voici un avis client reçu (écrit dans sa langue d'origine) :
 "{avis}"
-
-Génère une réponse {profil['ton']}, professionnelle, polie et efficace, en 3 à 5 phrases.
-Termine par cette signature : "{profil['signature']}".
-Merci de rester concis."""
-
-
+---
+🎯 Ta tâche est de rédiger une réponse dans la **même langue que l'avis**, en respectant le ton défini ci-dessous :
+🎙️ Ton attendu : **{profil['ton']}**
+- La réponse doit être polie, empathique et adaptée au contenu de l’avis.
+- Reste professionnel tout en respectant le ton indiqué.
+- Sois concis : 3 à 5 phrases maximum.
+❌ Évite les formules génériques, les répétitions, les emojis, les flatteries exagérées.
+✅ Termine toujours par cette signature : "{profil['signature']}"
+---
+🧾 Règles :
+- Ne traduis pas l’avis
+- Réponds uniquement dans la langue d’origine
+- Aucune balise HTML ou Markdown
+- Pas d’intro type "Cher client" ou "Bonjour"
+- Aère avec des retours à la ligne entre les phrases.
+"""
     try:
-        # 🔥 modèle validé et dispo pour la génération de texte
         model = genai.GenerativeModel("models/gemini-1.5-pro-latest")
-
         response = model.generate_content([prompt])
         return response.text.strip()
     except Exception as e:
-        return f"[Erreur Gemini] {e}"   
-
+        return f"[Erreur Gemini] {e}"
 
 @app.route("/generate_response", methods=["POST"])
 def generate_response():
-    avis = request.form.get("avis")  # récupère l'avis du formulaire
-    profil = session.get("profil_etablissement", )  # récupère le profil depuis la session
+    avis = request.form.get("avis")
+    review_id = request.form.get("review_id")  # Optionnel : pour savoir à quel avis associer la réponse
+    profil = session.get("profil_etablissement")
 
     if not avis or not profil:
-        return "Erreur : informations manquantes", 400
+        return "Erreur : informations manquantes, veuillez remplir le formulaire en bas de la page", 400
 
-    # ✅ on passe bien les 2 arguments attendus ici
+    user = User.query.filter_by(email=session["user_email"]).first()
+    if user.credits <= 0:
+        return "Crédits épuisés", 402
+
     reponse = generer_reponse_avis(profil, avis)
+    user.credits -= 1
+
+    # 🧠 Si l'ID de l'avis est fourni et correspond à un avis personnalisé, on sauvegarde la réponse
+    if review_id and review_id.startswith("demo_"):
+        try:
+            demo_id = int(review_id.replace("demo_", ""))
+            demo_review = DemoReview.query.get(demo_id)
+            if demo_review and demo_review.user_id == user.id:
+                demo_review.reponse = reponse
+        except Exception as e:
+            print("⚠️ Impossible de mettre à jour la réponse de l'avis :", e)
+
+    db.session.commit()
     return reponse
 
+@app.route("/contact")
+def contact():
+    return render_template("contact.html")
 
+
+# === Logout ===
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
 
 
+
+# === Démarrage ===
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
-    

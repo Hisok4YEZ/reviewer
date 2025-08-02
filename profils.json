@@ -5,5 +5,12 @@
     "ville": "lyon",
     "ton": "formel",
     "signature": "Brasserie George"
+  },
+  "lbqd1711@gmail.com": {
+    "nom": "Brasserie George",
+    "type": "restaurant",
+    "ville": "lyon",
+    "ton": "amical",
+    "signature": "Brasserie George"
   }
 }

@@ -52,6 +52,16 @@
         <h1 class="text-2xl font-bold text-white drop-shadow-md">
           <a href="/">Reviewer</a>
         </h1>
+        {% if session.user_email %}
+        <div
+          class="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-xl shadow text-white"
+        >
+          <span class="text-sm font-semibold">Crédits :</span>
+          <span class="text-lg font-bold text-yellow-300">{{ credits }}</span>
+          <span class="text-lg">💰</span>
+        </div>
+        {% endif %}
+
         <div class="flex items-center gap-3">
           <span class="text-sm text-white/90">{{ session.user_email }}</span>
           <a
@@ -188,11 +198,48 @@
         {% endfor %}
       </section>
 
+      <form
+        id="ajout-avis-form"
+        method="POST"
+        action="/add_demo_review"
+        class="mb-6 bg-gray-100 p-4 rounded"
+      >
+        <h3 class="text-lg font-bold mb-2">Ajouter un avis personnalisé</h3>
+        <input
+          type="text"
+          name="auteur"
+          placeholder="Nom du client"
+          required
+          class="w-full mb-2 px-3 py-2 border rounded"
+        />
+        <select
+          name="note"
+          required
+          class="w-full mb-2 px-3 py-2 border rounded"
+        >
+          <option value="FIVE">⭐⭐⭐⭐⭐</option>
+          <option value="FOUR">⭐⭐⭐⭐</option>
+          <option value="THREE">⭐⭐⭐</option>
+          <option value="TWO">⭐⭐</option>
+          <option value="ONE">⭐</option>
+        </select>
+        <textarea
+          name="texte"
+          placeholder="Commentaire..."
+          required
+          class="w-full mb-2 px-3 py-2 border rounded"
+        ></textarea>
+        <button type="submit" class="gradient-btn px-4 py-2 rounded text-white">
+          Ajouter l’avis
+        </button>
+      </form>
+
       <!-- Configuration -->
       <section class="section-box p-8 animate__animated animate__fadeInRight">
         <h2 class="text-3xl font-bold text-purple-800 mb-6">
           ⚙️ Configuration de vos réponses
         </h2>
+
         <form action="/save_profile" method="post" class="space-y-6">
           <div>
             <label class="block font-medium mb-1"
