@@ -344,14 +344,13 @@ def generate_codes_route():
     return f"{len(codes)} codes générés ! ✅"
 
 
-# === Démarrage ===
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    with app.app_context():
+        try:
+            db.create_all()
+            print("✅ Tables PostgreSQL créées")
+        except Exception as e:
+            print(f"❌ Erreur création tables : {e}")
 
-with app.app_context():
-    try:
-        db.create_all()
-        print("✅ Tables SQLite créées sur Render")
-    except Exception as e:
-        print(f"❌ Erreur création tables : {e}")
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
