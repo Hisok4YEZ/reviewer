@@ -27,7 +27,6 @@ def charger_profil_utilisateur(email):
         return data.get(email)
 
 # === Config Flask & DB ===
-load_dotenv()
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///flashreviewer.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -36,8 +35,8 @@ app.secret_key = "yunes_secret_key"
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 # === Google OAuth Config ===
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("REDIRECT_URI")
 SCOPES = [
     "https://www.googleapis.com/auth/business.manage",
