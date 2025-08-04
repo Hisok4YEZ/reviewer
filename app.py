@@ -294,8 +294,17 @@ def logout():
     return redirect(url_for("index"))
 
 
-@app.route("/redeem", methods=["GET", "POST"])
+@app.route("/pricing")
+def pricing():
+    return render_template("pricing.html")
+
+@app.route("/redeem", methods=["POST"])
 def redeem():
+    code = request.form.get("code")
+    user_email = session.get("user_email")
+    # Validation + ajout crédits...
+    return redirect("/dashboard")
+
     if request.method == "POST":
         code_input = request.form.get("code").strip()
         if not code_input or "user_email" not in session:
@@ -347,3 +356,5 @@ def generate_codes_route():
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
+with app.app_context():
+    db.create_all()

@@ -1,0 +1,101 @@
+<!-- templates/pricing.html -->
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Tarifs – Reviewer</title>
+    <link rel="stylesheet" href="https://cdn.tailwindcss.com" />
+    <link rel="stylesheet" href="../static/styles.css" />
+  </head>
+  <body
+    class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white min-h-screen"
+  >
+    {% include 'header.html' %}
+
+    <main class="pt-32 max-w-4xl mx-auto px-4">
+      <h1 class="text-4xl font-bold mb-8 text-center">
+        Choisissez votre formule
+      </h1>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <!-- Pack 5€ -->
+        <div
+          class="bg-white text-gray-800 rounded-xl p-6 shadow-lg text-center"
+        >
+          <h2 class="text-xl font-bold mb-2">Pack Découverte</h2>
+          <p class="text-3xl font-bold text-purple-700 mb-4">5€</p>
+          <p class="mb-6">10 crédits</p>
+          <form action="/create_checkout_session" method="POST">
+            <input type="hidden" name="plan" value="pack_5" />
+            <button
+              type="submit"
+              class="gradient-btn px-4 py-2 text-white rounded-full"
+            >
+              Acheter
+            </button>
+          </form>
+        </div>
+
+        <!-- Pack 10€ -->
+        <div
+          class="bg-white text-gray-800 rounded-xl p-6 shadow-lg text-center"
+        >
+          <h2 class="text-xl font-bold mb-2">Pack Pro</h2>
+          <p class="text-3xl font-bold text-purple-700 mb-4">10€</p>
+          <p class="mb-6">25 crédits</p>
+          <form action="/create_checkout_session" method="POST">
+            <input type="hidden" name="plan" value="pack_10" />
+            <button
+              type="submit"
+              class="gradient-btn px-4 py-2 text-white rounded-full"
+            >
+              Acheter
+            </button>
+          </form>
+        </div>
+
+        <!-- Abonnement -->
+        <div
+          class="bg-white text-gray-800 rounded-xl p-6 shadow-lg text-center"
+        >
+          <h2 class="text-xl font-bold mb-2">Abonnement mensuel</h2>
+          <p class="text-3xl font-bold text-purple-700 mb-4">9€/mois</p>
+          <p class="mb-6">30 crédits/mois</p>
+          <form action="/create_checkout_session" method="POST">
+            <input type="hidden" name="plan" value="sub_9" />
+            <button
+              type="submit"
+              class="gradient-btn px-4 py-2 text-white rounded-full"
+            >
+              S’abonner
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Section Code promo -->
+      <div
+        class="bg-white text-gray-800 rounded-xl p-6 shadow-lg text-center max-w-lg mx-auto"
+      >
+        <h3 class="text-lg font-semibold mb-4">
+          Vous avez un code promo ou des crédits à vie ?
+        </h3>
+        <form method="POST" action="/redeem" class="space-y-4">
+          <input
+            type="text"
+            name="code"
+            placeholder="Entrez votre code"
+            required
+            class="w-full p-2 rounded border border-gray-300"
+          />
+          <button
+            type="submit"
+            class="gradient-btn px-4 py-2 text-white rounded-full"
+          >
+            Valider
+          </button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>
