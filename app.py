@@ -28,8 +28,8 @@ def charger_profil_utilisateur(email):
 
 # === Config Flask & DB ===
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URI")
-print("🧪 DATABASE_URI = ", os.environ.get("DATABASE_URI"))
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+print("🧪 DATABASE_URL = ", os.environ.get("DATABASE_URL"))
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 app.secret_key = "yunes_secret_key"
